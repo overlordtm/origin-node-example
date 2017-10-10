@@ -3,12 +3,16 @@ const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert');
 const bodyParser = require('body-parser');
 
+var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
+    ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
+    mongoURL = process.env.OPENSHIFT_MONGODB_DB_URL || process.env.MONGO_URL;
+
+
 const app = express()
 
 app.use(bodyParser.json());
 
-
-var url = 'mongodb://172.17.0.2:27017/test';
+// var mongoURL = 'mongodb://172.17.0.2:27017/test';
 
 
 app.get('/', function (req, res) {
@@ -16,7 +20,7 @@ app.get('/', function (req, res) {
 })
 
 app.get('/api/:object', function (req, res) {
-    MongoClient.connect(url, function(err, db) {
+    MongoClient.connect(mongoURL, function(err, db) {
         db.collection(req.params.object).find().toArray( function(err,arr) {
             res.status(200).json(arr);
         });
@@ -29,7 +33,7 @@ app.get('/api/:object/:key/:val', function (req, res) {
 })
 
 app.put('/api/:object/:key/:val', function (req, res) {
-    // MongoClient.connect(url, function(err, db) {
+    // MongoClient.connect(mongoURL, function(err, db) {
     //     db.collection(req.params.object).insertOne(req.body);
     //     res.status(201);
     //     db.close();
@@ -39,7 +43,7 @@ app.put('/api/:object/:key/:val', function (req, res) {
 
 app.post('/api/:object', function (req, res) {
     // res.send(req.body);
-    MongoClient.connect(url, function(err, db) {
+    MongoClient.connect(mongoURL, function(err, db) {
         db.collection(req.params.object).insertOne(req.body, function(err, result) {
             if (err !== null) {
                 res.status(400);
@@ -53,7 +57,7 @@ app.post('/api/:object', function (req, res) {
 
 app.delete('/api/:object/:key/:val', function (req, res) {
   res.send(req.params)
-    MongoClient.connect(url, function(err, db) {
+    MongoClient.connect(mongoURL, function(err, db) {
         var data = {};
         data[req.params.key] = req.params.val;
 
@@ -64,12 +68,13 @@ app.delete('/api/:object/:key/:val', function (req, res) {
     });
 })
 
-app.listen(3000, function () {
-    console.log('Example app listening on port 3000!')
+app.listen(port, function () {
+    console.log('App listening on port ' + port + '!');
 
-    MongoClient.connect(url, function(err, db) {
+    console.log('Connecting to mongo on ' + mongoURL + '!');
+    MongoClient.connect(mongoURL, function(err, db) {
         assert.equal(null, err);
-        console.log("Connected correctly to server.");
+        console.log("Connected correctly to mongo.");
         db.close();
     });
 
