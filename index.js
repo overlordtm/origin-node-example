@@ -2,6 +2,7 @@ const express = require('express')
 const MongoClient = require('mongodb').MongoClient;
 const assert = require('assert');
 const bodyParser = require('body-parser');
+const oauthserver = require('node-oauth2-server');
 
 var port = process.env.PORT || process.env.OPENSHIFT_NODEJS_PORT || 8080,
     ip   = process.env.IP   || process.env.OPENSHIFT_NODEJS_IP || '0.0.0.0',
@@ -31,16 +32,64 @@ const app = express()
 
 // auto parse json post
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
 
 var db = null;
 
 // var mongoURL = 'mongodb://172.17.0.2:27017/test';
 // var mongoURL = 'mongodb://mongouser:mongopassword@test-mongo:27017/test';
+app.oauth = oauthserver({
+    model: require('./model.js'),
+    grants: ['password'],
+    debug: true
+});
 
 
 app.get('/', function (req, res) {
   res.send('Hello World!')
 })
+
+
+app.get('/secure', app.oauth.authorise(), function(req, res) {
+    res.send("secure");
+});
+
+app.get('/api/global/:object', function (req, res) {
+    db.collection(req.params.object).find().toArray( function(err,arr) {
+        res.status(200).json(arr);
+    });
+})
+
+app.get('/api/global/:object/:key/:val', function (req, res) {
+  res.send("not impl");
+})
+
+// app.put('/api/:object/:key/:val', function (req, res) {
+//     res.send("not impl");
+// })
+
+// app.post('/api/:object', function (req, res) {
+//     db.collection(req.params.object).insertOne(req.body, function(err, result) {
+//         if (err !== null) {
+//             res.status(400);
+//         }
+//         res.status(201);
+//         res.send();
+//     });
+// })
+
+// app.delete('/api/:object/:key/:val', function (req, res) {
+//     var data = {};
+//     data[req.params.key] = req.params.val;
+
+//     db.collection(req.params.object).deleteOne(data, function(err, results) {
+//             res.status(200);
+//             res.send();
+//         });
+// })
+
+
 
 app.get('/api/:object', function (req, res) {
     db.collection(req.params.object).find().toArray( function(err,arr) {
@@ -75,6 +124,10 @@ app.delete('/api/:object/:key/:val', function (req, res) {
             res.send();
         });
 })
+
+app.all('/oauth/token', app.oauth.grant());
+
+app.use(app.oauth.errorHandler());
 
 app.listen(port, function () {
     console.log('App listening on port ' + port + '!');
